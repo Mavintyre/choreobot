@@ -5,7 +5,13 @@ import (
 	"github.com/gempir/go-twitch-irc"
 )
 
-//This is a generic responder command implementation. It is configured with
+//This is a generic responder command implementation.
+// It can handle any rote stateless responses by template.
+// Use cases:
+// Simple Response: !rules -- Just says something verbatim in the chat (simple response is actually just a 1 template multiresponse)
+// MultiResponse: !quote [int|tag] -- Keeps track of multiple possible responses. Picks randomly unless a specific index is requested
+///// MultiResponse
+// Templated: !law {U} {1} {2} {...} -- Interpolates a response based on a template. Arguments are space separated. An ellipsis indicates "all remaining arguments"
 
 type responder struct {
 	templates []string
