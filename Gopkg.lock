@@ -7,9 +7,15 @@
   revision = "4d6cd828482ee46468feb78a057ad1396ad9d813"
   version = "0.22"
 
+[[projects]]
+  name = "github.com/sanity-io/litter"
+  packages = ["."]
+  revision = "ae543b7ba8fd6af63e4976198f146e1348ae53c1"
+  version = "v1.1.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "59de19da155f1605d03069e2be052d7db931f2cb51226c983f236a88dce4f03f"
+  inputs-digest = "f104ac89a89fbb3b9aee785fa408f50df31c50041881717c019d93540776f842"
   solver-name = "gps-cdcl"
   solver-version = 1
