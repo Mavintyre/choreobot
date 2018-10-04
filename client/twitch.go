@@ -6,40 +6,105 @@ import (
 	"strings"
 )
 
-type BotConfig interface {
-	GetUserName() string
-	GetToken() string
-	GetChannelList() []string
-	OnConnect()
-	OnWhisper(twitch.User, twitch.Message)
-	OnMessage(string, twitch.User, twitch.Message)
-	OnRoomState(string, twitch.User, twitch.Message)
-	OnClearChat(string, twitch.User, twitch.Message)
-	OnUserNotice(string, twitch.User, twitch.Message)
-	OnUserState(string, twitch.User, twitch.Message)
+type Twitch struct {
+	user string
+	*twitch.Client
+	eventChan  chan *TwitchEvent
+	actionChan chan action
 }
 
-func connect(b BotConfig) *twitch.Client {
-	token := b.GetToken()
-	if !strings.HasPrefix(token, "oauth:") {
-		token = fmt.Sprintf("oauth:%s", token)
+type Authenticator interface {
+	GetToken() string
+}
+
+type Thing int
+
+const (
+	_ Thing = iota
+	Connect
+	Whisper
+	Message
+	RoomState
+	ChatClear
+	UserNotice
+	UserState
+)
+
+type TwitchEvent struct {
+	Thing
+	Channel string
+	User    twitch.User
+	Message twitch.Message
+}
+
+type action struct {
+}
+
+func NewTwitchClient(username string) *Twitch {
+	t := &Twitch{user: username}
+	t.eventChan = make(chan *TwitchEvent)
+	t.actionChan = make(chan action)
+	return t
+}
+
+func (t *Twitch) GetEventChannel() chan *TwitchEvent {
+	return t.eventChan
+}
+
+func (t *Twitch) Start(a Authenticator, channels ...string) {
+	// Connect
+	tok := a.GetToken()
+	if !strings.HasPrefix(tok, "oauth:") {
+		tok = fmt.Sprintf("oauth:%s", tok)
 	}
-	client := twitch.NewClient(b.GetUserName(), token)
-	client.OnConnect(b.OnConnect)
-	client.OnNewWhisper(b.OnWhisper)
-	client.OnNewMessage(b.OnMessage)
-	client.OnNewRoomstateMessage(b.OnRoomState)
-	client.OnNewClearchatMessage(b.OnClearChat)
-	client.OnNewUsernoticeMessage(b.OnUserNotice)
-	client.OnNewUserstateMessage(b.OnUserState)
-	for _, channelName := range b.GetChannelList() {
-		client.Join(channelName)
+	t.Client = twitch.NewClient(t.user, tok)
+
+	t.Client.OnConnect(func() { handleConnect(t) })
+	t.Client.OnNewWhisper(func(u twitch.User, m twitch.Message) { handleWhisper(t, u, m) })
+	t.Client.OnNewMessage(func(c string, u twitch.User, m twitch.Message) { handleMessage(t, c, u, m) })
+	t.Client.OnNewRoomstateMessage(func(c string, u twitch.User, m twitch.Message) { handleRoomState(t, c, u, m) })
+	t.Client.OnNewClearchatMessage(func(c string, u twitch.User, m twitch.Message) { handleChatClear(t, c, u, m) })
+	t.Client.OnNewUsernoticeMessage(func(c string, u twitch.User, m twitch.Message) { handleUserNotice(t, c, u, m) })
+	t.Client.OnNewUserstateMessage(func(c string, u twitch.User, m twitch.Message) { handleUserState(t, c, u, m) })
+
+	for _, channelName := range channels {
+		t.Client.Join(channelName)
 	}
-	go func() {
-		err := client.Connect()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}()
-	return client
+	err := t.Client.Connect()
+	if err != nil {
+		fmt.Println(err)
+	}
+	t.Stop()
+
+}
+
+func (t *Twitch) Stop() {
+
+}
+
+func handleConnect(t *Twitch) {
+	t.eventChan <- &TwitchEvent{Connect, "", nil, nil}
+}
+func handleWhisper(t *Twitch, user twitch.User, message twitch.Message) {
+	t.eventChan <- &TwitchEvent{Whisper, "", user, message}
+
+}
+func handleMessage(t *Twitch, s string, user twitch.User, message twitch.Message) {
+	t.eventChan <- &TwitchEvent{Message, s, user, message}
+
+}
+func handleRoomState(t *Twitch, s string, user twitch.User, message twitch.Message) {
+	t.eventChan <- &TwitchEvent{RoomState, s, user, message}
+
+}
+func handleChatClear(t *Twitch, s string, user twitch.User, message twitch.Message) {
+	t.eventChan <- &TwitchEvent{ChatClear, s, user, message}
+
+}
+func handleUserNotice(t *Twitch, s string, user twitch.User, message twitch.Message) {
+	t.eventChan <- &TwitchEvent{UserNotice, s, user, message}
+
+}
+func handleUserState(t *Twitch, s string, user twitch.User, message twitch.Message) {
+	t.eventChan <- &TwitchEvent{UserState, s, user, message}
 }

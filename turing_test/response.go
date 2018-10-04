@@ -3,18 +3,37 @@ package turing_test
 import (
 	"github.com/djdoeslinux/choreobot/command"
 	"github.com/gempir/go-twitch-irc"
+	"github.com/jinzhu/gorm"
+	"math/rand"
+	"strconv"
+	"strings"
+	"text/template"
 )
 
 //This is a generic responder command implementation.
 // It can handle any rote stateless responses by template.
 // Use cases:
-// Simple Response: !rules -- Just says something verbatim in the chat (simple response is actually just a 1 template multiresponse)
+// Simple Response: !rules -- Just says something verbatim in the chat (simple is actually just a 1 template multiresponse)
 // MultiResponse: !quote [int|tag] -- Keeps track of multiple possible responses. Picks randomly unless a specific index is requested
 ///// MultiResponse
 // Templated: !law {U} {1} {2} {...} -- Interpolates a response based on a template. Arguments are space separated. An ellipsis indicates "all remaining arguments"
 
-type responder struct {
-	templates []string
+type Turing struct {
+	gorm.Model
+	Name      string
+	ChannelID uint
+	Responses []Response
+
+	//Private Members
+	numResponses     int
+	templatesByIndex []*template.Template
+}
+
+type Response struct {
+	gorm.Model
+	TuringID uint
+	Index    uint
+	Template string
 }
 
 type Responder interface {
@@ -24,7 +43,45 @@ type Responder interface {
 	AddResponse(string) int
 }
 
-func (*responder) Evaluate(u twitch.User, t command.TokenStream) command.Result {
-	panic("implement me")
+func GetTuringByChannelAndName(channelID uint, name string) *Turing {
+	panic("x")
+}
 
+func (t *Turing) Evaluate(u twitch.User, args command.TokenStream) command.Result {
+	if t.numResponses == 1 {
+		return t.doTemplate(0, u, args)
+	}
+	if args.NumTokens() == 1 {
+		return t.doTemplate(rand.Intn(t.numResponses), u, args)
+	}
+
+	index, err := strconv.Atoi(args.GetTokenByIndex(1).String())
+	if err == nil {
+		return t.doTemplate(index, u, args)
+	}
+	return command.Error(err)
+}
+
+func (t *Turing) AddResponse(string) int {
+	panic("implement me")
+}
+
+func (t *Turing) doTemplate(i int, user twitch.User, stream command.TokenStream) command.Result {
+	tt := t.templatesByIndex[i]
+	data := struct {
+		me   string
+		args []string
+	}{}
+	stream.Seek(i)
+	for stream.NotDone() {
+		token, _ := stream.PopToken()
+		data.args = append(data.args, token.String())
+	}
+	data.me = user.Username
+	result := strings.Builder{}
+	err := tt.Execute(&result, data)
+	if err != nil {
+		return command.Error(err)
+	}
+	return command.TODO
 }

@@ -1,49 +1,81 @@
 package core
 
 import (
+	"github.com/djdoeslinux/choreobot/client"
 	"github.com/djdoeslinux/choreobot/command"
 	"github.com/djdoeslinux/choreobot/moderator"
 	"github.com/gempir/go-twitch-irc"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
-type bot struct {
-	username   string
-	commands   map[commandKey]command.Command
-	client     twitch.Client
+type Bot struct {
+	gorm.Model
+	UserName   string
+	OAuthToken string
+	ChatRooms  []ChatRoom
+
+	// Private members down here
+	client     *client.Twitch
+	dbPath     string
 	moderators map[string]moderator.Moderator
+	commands   map[commandKey]command.Command
+}
+
+type ChatRoom struct {
+	gorm.Model
+	BotID           uint
+	IsEnabled       bool
+	Name            string
+	MessageHandlers []MessageHandler
+
+	//Private members down here
+	isModerator bool
+}
+
+type MessageHandler struct {
+	gorm.Model
+	ChannelID  uint
+	Namespace  string
+	Name       string
+	IsDisabled bool
 }
 
 type commandKey struct {
 	channel string
-	command string
+	command command.Token
 }
 
-func (b *bot) Start() {
+func (b *Bot) Start() {
+	b.client = client.NewTwitchClient(b.UserName)
+	b.client.Start(b)
+}
+
+func (b *Bot) Stop() {
 
 }
 
-// Implement the callbacks for the twitch irc library
-func (b *bot) GetUserName() string {
-	return b.username
+func LoadBot(db gorm.DB, name string) (b *Bot, err error) {
+	b = &Bot{}
+	db.FirstOrInit(b, Bot{UserName: name})
+
+	return
 }
 
-func (b *bot) GetToken() string {
-	panic("implement me")
+// Implement client.Authenticator interface
+func (b *Bot) GetToken() string {
+	return b.OAuthToken
 }
 
-func (b *bot) GetChannelList() []string {
-	panic("implement me")
-}
-
-func (b *bot) OnConnect() {
+func (b *Bot) OnConnect() {
 	// This function intentionally left blank
 }
 
-func (b *bot) OnWhisper(u twitch.User, m twitch.Message) {
+func (b *Bot) OnWhisper(u twitch.User, m twitch.Message) {
 	panic("implement me")
 }
 
-func (b *bot) OnMessage(c string, u twitch.User, m twitch.Message) {
+func (b *Bot) OnMessage(c string, u twitch.User, m twitch.Message) {
 	//We always want to moderate all message regardless
 	b.moderateMessage(c, u, m)
 
@@ -57,23 +89,23 @@ func (b *bot) OnMessage(c string, u twitch.User, m twitch.Message) {
 	}
 }
 
-func (b *bot) OnRoomState(c string, u twitch.User, m twitch.Message) {
+func (b *Bot) OnRoomState(c string, u twitch.User, m twitch.Message) {
 	panic("implement me")
 }
 
-func (b *bot) OnClearChat(c string, u twitch.User, m twitch.Message) {
+func (b *Bot) OnClearChat(c string, u twitch.User, m twitch.Message) {
 	panic("implement me")
 }
 
-func (b *bot) OnUserNotice(c string, u twitch.User, m twitch.Message) {
+func (b *Bot) OnUserNotice(c string, u twitch.User, m twitch.Message) {
 	panic("implement me")
 }
 
-func (b *bot) OnUserState(c string, u twitch.User, m twitch.Message) {
+func (b *Bot) OnUserState(c string, u twitch.User, m twitch.Message) {
 	panic("implement me")
 }
 
-func (b *bot) moderateMessage(c string, user twitch.User, message twitch.Message) {
+func (b *Bot) moderateMessage(c string, user twitch.User, message twitch.Message) {
 	mod, _ := b.moderators[c]
 	if mod == nil {
 		return
@@ -82,16 +114,16 @@ func (b *bot) moderateMessage(c string, user twitch.User, message twitch.Message
 	mod.Moderate(user, message)
 }
 
-func (b *bot) handleComment(c string, user twitch.User, message twitch.Message) {
+func (b *Bot) handleComment(c string, user twitch.User, message twitch.Message) {
 	//Initially this will be for questions so people don't have to keep asking them over and over.
 	// should also let people bump the question from the user
 	// Can also be used for a dynamic meter -- think #boom replays from DrDisrespect or KitBoga's #meme meter.
 }
 
-func (b *bot) handleCommand(c string, u twitch.User, m twitch.Message) {
+func (b *Bot) handleCommand(c string, u twitch.User, m twitch.Message) {
 	tokenStream := command.Tokenize(m)
 	// Check if the command is already cached in our map
-	key := commandKey{channel: c, command: tokenStream.GetCommand()}
+	key := commandKey{channel: c, command: tokenStream.GetTokenByIndex(0)}
 	cmd, _ := b.commands[key]
 	if cmd == nil {
 		cmd = command.NotFound
