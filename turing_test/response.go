@@ -1,6 +1,7 @@
 package turing_test
 
 import (
+	"fmt"
 	"github.com/djdoeslinux/choreobot/command"
 	"github.com/gempir/go-twitch-irc"
 	"github.com/jinzhu/gorm"
@@ -27,12 +28,13 @@ type Turing struct {
 	//Private Members
 	numResponses     int
 	templatesByIndex []*template.Template
+	isInitialized    bool
 }
 
 type Response struct {
 	gorm.Model
 	TuringID uint
-	Index    uint
+	Index    int
 	Template string
 }
 
@@ -45,6 +47,23 @@ type Responder interface {
 
 func GetTuringByChannelAndName(channelID uint, name string) *Turing {
 	panic("x")
+}
+
+func (t *Turing) initialize() {
+
+	for _, r := range t.Responses {
+		if len(t.templatesByIndex) < r.Index {
+			newSlice := make([]*template.Template, r.Index, r.Index)
+			copy(newSlice, t.templatesByIndex)
+			t.templatesByIndex = newSlice
+		}
+		templ := template.New(fmt.Sprintf("%s:%s", t.Name, strconv.Itoa(r.Index)))
+		parsedTemplate, err := templ.Parse(r.Template)
+		if err != nil {
+			panic("broken template?")
+		}
+		t.templatesByIndex[r.Index] = parsedTemplate
+	}
 }
 
 func (t *Turing) Evaluate(u twitch.User, args command.TokenStream) command.Result {
