@@ -5,7 +5,10 @@
 
 package command
 
-import "github.com/gempir/go-twitch-irc"
+import (
+	"github.com/djdoeslinux/choreobot/client"
+	"github.com/gempir/go-twitch-irc"
+)
 
 var NotFound Command
 
@@ -17,6 +20,7 @@ var NotFound Command
 //Restore -
 //Help -
 //Mute - Supress all responses from the bot, but continue moderating
+//ping - respond with pong
 
 func init() {
 	NotFound = Command(notFound{})
@@ -29,7 +33,43 @@ func (notFound) IsAllowed(u twitch.User) bool {
 	return true
 }
 
-func (notFound) Evaluate(u twitch.User, t TokenStream) Result {
+func (notFound) Evaluate(e *client.TwitchEvent, t TokenStream) Result {
 	panic("implement me")
 	//Return default not found message
+}
+
+type builtin struct {
+	cmd string
+	exe func(e *client.TwitchEvent, s TokenStream) Result
+}
+
+func GetPing() Command {
+	return &builtin{"ping", ping}
+}
+
+func (b *builtin) Evaluate(e *client.TwitchEvent, s TokenStream) Result {
+	return b.exe(e, s)
+}
+
+func (b *builtin) IsAllowed(u twitch.User) bool {
+	return true
+}
+
+func ping(event *client.TwitchEvent, stream TokenStream) Result {
+	return &Reply{"PONG!"}
+}
+
+type Reply struct {
+	Value string
+}
+
+func (r *Reply) HasResponse() bool {
+	if r.Value != "" {
+		return true
+	}
+	return false
+}
+
+func (r *Reply) GetResponse() string {
+	return r.Value
 }

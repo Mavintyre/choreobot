@@ -23,6 +23,9 @@ func main() {
 	registry.AutoMigrate(db)
 
 	//db.Create(&core.Bot{ UserName:   "stupidbot", OAuthToken: "", })
-	db.Find(&b)
-	litter.Dump(b)
+	db.Set("gorm:auto_preload", true).Find(&b)
+	for _, bot := range b {
+		bot.Start(db)
+		litter.Dump(bot)
+	}
 }

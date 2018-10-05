@@ -75,11 +75,12 @@ func (t *Twitch) Start(a Authenticator, channels ...string) {
 	for _, channelName := range channels {
 		t.Client.Join(channelName)
 	}
-	err := t.Client.Connect()
-	if err != nil {
-		fmt.Println(err)
-	}
-	t.Stop()
+	go func() {
+		err := t.Client.Connect()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 }
 

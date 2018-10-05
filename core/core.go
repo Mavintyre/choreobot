@@ -12,6 +12,7 @@ import (
 	"github.com/gempir/go-twitch-irc"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/sanity-io/litter"
 )
 
 var Models []interface{}
@@ -28,9 +29,10 @@ type Bot struct {
 
 	// Private members down here
 	client     *client.Twitch
-	dbPath     string
+	db         *gorm.DB
 	moderators map[string]moderator.Moderator
 	commands   map[commandKey]command.Command
+	chats      map[string]*ChatRoom
 }
 
 type ChatRoom struct {
@@ -39,6 +41,7 @@ type ChatRoom struct {
 	IsEnabled       bool
 	Name            string
 	MessageHandlers []MessageHandler
+
 	//Private members down here
 	isModerator bool
 }
@@ -53,12 +56,29 @@ type MessageHandler struct {
 
 type commandKey struct {
 	channel string
-	command command.Token
+	command string
 }
 
-func (b *Bot) Start() {
+func (b *Bot) Start(db *gorm.DB) {
+	b.db = db
+	b.initialize()
 	b.client = client.NewTwitchClient(b.UserName)
-	b.client.Start(b)
+	var chats []string
+	for c, _ := range b.chats {
+		chats = append(chats, c)
+	}
+	b.client.Start(b, chats...)
+	eventChan := b.client.GetEventChannel()
+
+	for event := range eventChan {
+		litter.Dump(event)
+		switch event.Thing {
+		case client.Message:
+			b.handleMessage(event)
+		case client.Whisper:
+
+		}
+	}
 }
 
 func (b *Bot) Stop() {
@@ -77,42 +97,21 @@ func (b *Bot) GetToken() string {
 	return b.OAuthToken
 }
 
-func (b *Bot) OnConnect() {
-	// This function intentionally left blank
-}
-
-func (b *Bot) OnWhisper(u twitch.User, m twitch.Message) {
-	panic("implement me")
-}
-
-func (b *Bot) OnMessage(c string, u twitch.User, m twitch.Message) {
+func (b *Bot) handleMessage(e *client.TwitchEvent) {
+	c := e.Channel
+	u := e.User
+	m := e.Message
 	//We always want to moderate all message regardless
-	b.moderateMessage(c, u, m)
+	b.moderateMessage(c, *u, *m)
 
 	//Handle the message differently based on the first character
 	textAsBytes := []byte(m.Text)
 	switch textAsBytes[0] {
 	case '!':
-		b.handleCommand(c, u, m)
+		b.handleCommand(e)
 	case '#':
-		b.handleComment(c, u, m)
+		b.handleComment(c, *u, *m)
 	}
-}
-
-func (b *Bot) OnRoomState(c string, u twitch.User, m twitch.Message) {
-	panic("implement me")
-}
-
-func (b *Bot) OnClearChat(c string, u twitch.User, m twitch.Message) {
-	panic("implement me")
-}
-
-func (b *Bot) OnUserNotice(c string, u twitch.User, m twitch.Message) {
-	panic("implement me")
-}
-
-func (b *Bot) OnUserState(c string, u twitch.User, m twitch.Message) {
-	panic("implement me")
 }
 
 func (b *Bot) moderateMessage(c string, user twitch.User, message twitch.Message) {
@@ -130,17 +129,38 @@ func (b *Bot) handleComment(c string, user twitch.User, message twitch.Message) 
 	// Can also be used for a dynamic meter -- think #boom replays from DrDisrespect or KitBoga's #meme meter.
 }
 
-func (b *Bot) handleCommand(c string, u twitch.User, m twitch.Message) {
-	tokenStream := command.Tokenize(m)
+func (b *Bot) handleCommand(e *client.TwitchEvent) {
+	tokenStream := command.Tokenize(*e.Message)
 	// Check if the command is already cached in our map
-	key := commandKey{channel: c, command: tokenStream.GetTokenByIndex(0)}
+	key := commandKey{channel: e.Channel, command: tokenStream.GetTokenByIndex(0).String()}
 	cmd, _ := b.commands[key]
 	if cmd == nil {
 		cmd = command.NotFound
 	}
-	result := cmd.Evaluate(u, tokenStream)
+	result := cmd.Evaluate(e, tokenStream)
 
 	if result.HasResponse() {
-		b.client.Say(c, result.GetResponse())
+		b.client.Say(e.Channel, result.GetResponse())
 	}
+}
+func (b *Bot) initialize() {
+	b.commands = make(map[commandKey]command.Command)
+	b.moderators = make(map[string]moderator.Moderator)
+	b.chats = make(map[string]*ChatRoom)
+	for _, c := range b.ChatRooms {
+		b.chats[c.Name] = &c
+		b.commands[commandKey{c.Name, "!ping"}] = command.GetPing()
+	}
+
+}
+
+func (b *Bot) JoinNewChat(c string) {
+	if _, exists := b.chats[c]; exists {
+		return
+	}
+	//TODO: Setup the default parameters for the room.
+	newChat := &ChatRoom{Name: c, IsEnabled: true, BotID: b.ID}
+	b.db.Create(newChat)
+	b.client.Join(c)
+
 }

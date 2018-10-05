@@ -7,6 +7,7 @@ package command
 
 import (
 	"fmt"
+	"github.com/djdoeslinux/choreobot/client"
 	"github.com/gempir/go-twitch-irc"
 )
 
@@ -18,7 +19,7 @@ func init() {
 
 type Command interface {
 	IsAllowed(u twitch.User) bool
-	Evaluate(u twitch.User, t TokenStream) Result
+	Evaluate(e *client.TwitchEvent, t TokenStream) Result
 }
 
 type Result interface {
