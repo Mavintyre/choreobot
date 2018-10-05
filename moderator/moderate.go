@@ -6,6 +6,7 @@
 package moderator
 
 import (
+	"github.com/djdoeslinux/choreobot/client"
 	"github.com/gempir/go-twitch-irc"
 	"github.com/jinzhu/gorm"
 )
@@ -41,8 +42,11 @@ type Moderator struct {
 	Rules     []Rule
 }
 
-func (m *Moderator) Moderate(user twitch.User, msg twitch.Message) {
+type ModerationResult struct {
+}
 
+func (m *Moderator) Moderate(e *client.TwitchEvent) ModerationResult {
+	return ModerationResult{}
 }
 
 // Features to be implemented

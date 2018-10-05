@@ -78,7 +78,7 @@ func ping(event *client.TwitchEvent, stream TokenStream) Result {
 }
 
 func addCommand(e *client.TwitchEvent, s TokenStream) Result {
-	panic("nope")
+	return &Reply{"no command for you"}
 }
 
 type Reply struct {

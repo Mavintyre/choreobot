@@ -32,3 +32,7 @@ type UserChatState struct {
 	BanCount  int
 	LastBan   int
 }
+
+func GetUserByName(n string) *User {
+	return nil
+}

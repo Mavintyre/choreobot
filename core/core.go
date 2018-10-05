@@ -9,7 +9,6 @@ import (
 	"github.com/djdoeslinux/choreobot/client"
 	"github.com/djdoeslinux/choreobot/command"
 	"github.com/djdoeslinux/choreobot/moderator"
-	"github.com/gempir/go-twitch-irc"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/sanity-io/litter"
@@ -18,7 +17,7 @@ import (
 var Models []interface{}
 
 func init() {
-	Models = append(Models, &Bot{}, &ChatRoom{}, &MessageHandler{})
+	Models = append(Models, &Bot{}, &ChatRoom{}, &MessageHandler{}, &Permission{}, &Role{})
 }
 
 type Bot struct {
@@ -28,11 +27,9 @@ type Bot struct {
 	ChatRooms  []ChatRoom
 
 	// Private members down here
-	client     *client.Twitch
-	db         *gorm.DB
-	moderators map[string]moderator.Moderator
-	commands   map[commandKey]command.Command
-	chats      map[string]*ChatRoom
+	client *client.Twitch
+	db     *gorm.DB
+	chats  map[string]*ChatRoom
 }
 
 type ChatRoom struct {
@@ -40,23 +37,38 @@ type ChatRoom struct {
 	BotID           uint
 	IsEnabled       bool
 	Name            string
+	Moderator       *moderator.Moderator
 	MessageHandlers []MessageHandler
+	Permissions     []Permission
 
 	//Private members down here
 	isModerator bool
+	commands    map[string]command.Command
+	client      *client.Twitch
 }
 
 type MessageHandler struct {
 	gorm.Model
-	ChannelID  uint
-	Namespace  string
-	Name       string
-	IsDisabled bool
+	ChannelID               uint
+	Namespace               string
+	Name                    string
+	CommandImplementationID uint
+	IsDisabled              bool
 }
 
-type commandKey struct {
-	channel string
-	command string
+type Permission struct {
+	gorm.Model
+	ChannelID uint
+	RoleID    uint
+	CommandID uint
+	Priority  int
+	Grant     string
+}
+
+type Role struct {
+	gorm.Model
+	ChannelID uint
+	Name      string
 }
 
 func (b *Bot) Start(db *gorm.DB) {
@@ -98,61 +110,54 @@ func (b *Bot) GetToken() string {
 }
 
 func (b *Bot) handleMessage(e *client.TwitchEvent) {
-	c := e.Channel
-	u := e.User
+	c := b.chats[e.Channel]
 	m := e.Message
 	//We always want to moderate all message regardless
-	b.moderateMessage(c, *u, *m)
+	c.Moderator.Moderate(e)
 
 	//Handle the message differently based on the first character
 	textAsBytes := []byte(m.Text)
 	switch textAsBytes[0] {
 	case '!':
-		b.handleCommand(e)
+		c.handleCommand(e)
 	case '#':
-		b.handleComment(c, *u, *m)
+		c.handleComment(e)
 	}
 }
 
-func (b *Bot) moderateMessage(c string, user twitch.User, message twitch.Message) {
-	mod, exists := b.moderators[c]
-	if !exists {
-		return
-	}
-	//TODO: Decide if we should block on this or not.
-	mod.Moderate(user, message)
-}
-
-func (b *Bot) handleComment(c string, user twitch.User, message twitch.Message) {
+func (c *ChatRoom) handleComment(e *client.TwitchEvent) {
 	//Initially this will be for questions so people don't have to keep asking them over and over.
 	// should also let people bump the question from the user
 	// Can also be used for a dynamic meter -- think #boom replays from DrDisrespect or KitBoga's #meme meter.
 }
 
-func (b *Bot) handleCommand(e *client.TwitchEvent) {
+func (c *ChatRoom) handleCommand(e *client.TwitchEvent) {
 	tokenStream := command.Tokenize(*e.Message)
 	// Check if the command is already cached in our map
-	key := commandKey{channel: e.Channel, command: tokenStream.GetTokenByIndex(0).String()}
-	cmd, _ := b.commands[key]
+	key := tokenStream.GetTokenByIndex(0).String()
+	cmd, _ := c.commands[key]
 	if cmd == nil {
 		cmd = command.NotFound
 	}
 	result := cmd.Evaluate(e, tokenStream)
 
 	if result.HasResponse() {
-		b.client.Say(e.Channel, result.GetResponse())
+		c.client.Say(e.Channel, result.GetResponse())
 	}
 }
 func (b *Bot) initialize() {
-	b.commands = make(map[commandKey]command.Command)
-	b.moderators = make(map[string]moderator.Moderator)
 	b.chats = make(map[string]*ChatRoom)
 	for _, c := range b.ChatRooms {
 		b.chats[c.Name] = &c
-		b.commands[commandKey{c.Name, "!ping"}] = command.Ping
-		b.commands[commandKey{c.Name, "!addCommand"}] = command.AddCommand
+		c.initialize(b.db)
 	}
 
+}
+
+func (c *ChatRoom) initialize(db *gorm.DB) {
+	c.commands = make(map[string]command.Command)
+	c.commands["!ping"] = command.Ping
+	c.commands["!addCommand"] = command.AddCommand
 }
 
 func (b *Bot) JoinNewChat(c string) {
