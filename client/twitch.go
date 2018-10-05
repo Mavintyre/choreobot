@@ -38,8 +38,8 @@ const (
 type TwitchEvent struct {
 	Thing
 	Channel string
-	User    twitch.User
-	Message twitch.Message
+	User    *twitch.User
+	Message *twitch.Message
 }
 
 type action struct {
@@ -91,25 +91,25 @@ func handleConnect(t *Twitch) {
 	t.eventChan <- &TwitchEvent{Connect, "", nil, nil}
 }
 func handleWhisper(t *Twitch, user twitch.User, message twitch.Message) {
-	t.eventChan <- &TwitchEvent{Whisper, "", user, message}
+	t.eventChan <- &TwitchEvent{Whisper, "", &user, &message}
 
 }
 func handleMessage(t *Twitch, s string, user twitch.User, message twitch.Message) {
-	t.eventChan <- &TwitchEvent{Message, s, user, message}
+	t.eventChan <- &TwitchEvent{Message, s, &user, &message}
 
 }
 func handleRoomState(t *Twitch, s string, user twitch.User, message twitch.Message) {
-	t.eventChan <- &TwitchEvent{RoomState, s, user, message}
+	t.eventChan <- &TwitchEvent{RoomState, s, &user, &message}
 
 }
 func handleChatClear(t *Twitch, s string, user twitch.User, message twitch.Message) {
-	t.eventChan <- &TwitchEvent{ChatClear, s, user, message}
+	t.eventChan <- &TwitchEvent{ChatClear, s, &user, &message}
 
 }
 func handleUserNotice(t *Twitch, s string, user twitch.User, message twitch.Message) {
-	t.eventChan <- &TwitchEvent{UserNotice, s, user, message}
+	t.eventChan <- &TwitchEvent{UserNotice, s, &user, &message}
 
 }
 func handleUserState(t *Twitch, s string, user twitch.User, message twitch.Message) {
-	t.eventChan <- &TwitchEvent{UserState, s, user, message}
+	t.eventChan <- &TwitchEvent{UserState, s, &user, &message}
 }

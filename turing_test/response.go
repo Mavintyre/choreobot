@@ -24,6 +24,12 @@ import (
 ///// MultiResponse
 // Templated: !law {U} {1} {2} {...} -- Interpolates a response based on a template. Arguments are space separated. An ellipsis indicates "all remaining arguments"
 
+var Models []interface{}
+
+func init() {
+	Models = append(Models, &Turing{}, &Response{})
+}
+
 type Turing struct {
 	gorm.Model
 	Name      string

@@ -14,6 +14,12 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
+var Models []interface{}
+
+func init() {
+	Models = append(Models, &Bot{}, &ChatRoom{}, &MessageHandler{})
+}
+
 type Bot struct {
 	gorm.Model
 	UserName   string
@@ -33,7 +39,6 @@ type ChatRoom struct {
 	IsEnabled       bool
 	Name            string
 	MessageHandlers []MessageHandler
-
 	//Private members down here
 	isModerator bool
 }
@@ -111,8 +116,8 @@ func (b *Bot) OnUserState(c string, u twitch.User, m twitch.Message) {
 }
 
 func (b *Bot) moderateMessage(c string, user twitch.User, message twitch.Message) {
-	mod, _ := b.moderators[c]
-	if mod == nil {
+	mod, exists := b.moderators[c]
+	if !exists {
 		return
 	}
 	//TODO: Decide if we should block on this or not.

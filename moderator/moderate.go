@@ -5,14 +5,23 @@
 
 package moderator
 
-import "github.com/gempir/go-twitch-irc"
+import (
+	"github.com/gempir/go-twitch-irc"
+	"github.com/jinzhu/gorm"
+)
 
-type Moderator interface {
+var Models []interface{}
+
+func init() {
+	Models = append(Models, &Moderator{}, &Rule{})
+}
+
+type ModeratorI interface {
 	Moderate(u twitch.User, m twitch.Message)
 }
 
 type ConfigurableModerator interface {
-	Moderator
+	ModeratorI
 	AddRule(r Rule)
 	DisableRule(r Rule)
 	ModifyRule(r Rule)
@@ -20,13 +29,19 @@ type ConfigurableModerator interface {
 	GetRuleByLabel(n string) Rule
 }
 
-type Rule interface {
+type Rule struct {
+	gorm.Model
+	Name        string
+	ModeratorID uint
 }
 
-type ruleManager struct {
+type Moderator struct {
+	gorm.Model
+	ChannelID uint
+	Rules     []Rule
 }
 
-func (m *ruleManager) Moderate(user twitch.User, msg twitch.Message) {
+func (m *Moderator) Moderate(user twitch.User, msg twitch.Message) {
 
 }
 

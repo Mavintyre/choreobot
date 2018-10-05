@@ -98,4 +98,5 @@ func (s *stupidLexer) Seek(i int) error {
 		return x.OutOfBounds
 	}
 	s.curToken = i
+	return nil
 }

@@ -4,3 +4,9 @@
  */
 
 package meter
+
+var Models []interface{}
+
+func init() {
+	//Models = append(Models, &Tracker{})
+}
