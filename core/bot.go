@@ -7,7 +7,6 @@ package core
 
 import (
 	"github.com/djdoeslinux/choreobot/client"
-	"github.com/djdoeslinux/choreobot/command"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/sanity-io/litter"
