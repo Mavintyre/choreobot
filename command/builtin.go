@@ -38,13 +38,31 @@ func (notFound) Evaluate(e *client.TwitchEvent, t TokenStream) Result {
 	//Return default not found message
 }
 
+var AddCommand Command
+var Permit Command
+var Grant Command
+var DropCommand Command
+var Snapshot Command
+var Restore Command
+var Help Command
+var Mute Command
+var Ping Command
+
+func init() {
+	AddCommand = &builtin{"AddCommand", addCommand}
+	//Permit = &builtin{"Permit", permit}
+	//Grant = &builtin{"Grant", grant}
+	//DropCommand = &builtin{"DropCommand", dropCommand}
+	//Snapshot = &builtin{"Snapshot", snapshot}
+	//Restore = &builtin{"Restore", restore}
+	//Help = &builtin{"Help", help}
+	//Mute = &builtin{"Mute", mute}
+	Ping = &builtin{"ping", ping}
+}
+
 type builtin struct {
 	cmd string
 	exe func(e *client.TwitchEvent, s TokenStream) Result
-}
-
-func GetPing() Command {
-	return &builtin{"ping", ping}
 }
 
 func (b *builtin) Evaluate(e *client.TwitchEvent, s TokenStream) Result {
@@ -57,6 +75,10 @@ func (b *builtin) IsAllowed(u twitch.User) bool {
 
 func ping(event *client.TwitchEvent, stream TokenStream) Result {
 	return &Reply{"PONG!"}
+}
+
+func addCommand(e *client.TwitchEvent, s TokenStream) Result {
+	panic("nope")
 }
 
 type Reply struct {

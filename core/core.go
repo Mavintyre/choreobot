@@ -149,7 +149,8 @@ func (b *Bot) initialize() {
 	b.chats = make(map[string]*ChatRoom)
 	for _, c := range b.ChatRooms {
 		b.chats[c.Name] = &c
-		b.commands[commandKey{c.Name, "!ping"}] = command.GetPing()
+		b.commands[commandKey{c.Name, "!ping"}] = command.Ping
+		b.commands[commandKey{c.Name, "!addCommand"}] = command.AddCommand
 	}
 
 }
