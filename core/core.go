@@ -8,68 +8,10 @@ package core
 import (
 	"github.com/djdoeslinux/choreobot/client"
 	"github.com/djdoeslinux/choreobot/command"
-	"github.com/djdoeslinux/choreobot/moderator"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/sanity-io/litter"
 )
-
-var Models []interface{}
-
-func init() {
-	Models = append(Models, &Bot{}, &ChatRoom{}, &MessageHandler{}, &Permission{}, &Role{})
-}
-
-type Bot struct {
-	gorm.Model
-	UserName   string
-	OAuthToken string
-	ChatRooms  []ChatRoom
-
-	// Private members down here
-	client *client.Twitch
-	db     *gorm.DB
-	chats  map[string]*ChatRoom
-}
-
-type ChatRoom struct {
-	gorm.Model
-	BotID           uint
-	IsEnabled       bool
-	Name            string
-	Moderator       *moderator.Moderator
-	MessageHandlers []MessageHandler
-	Permissions     []Permission
-
-	//Private members down here
-	isModerator bool
-	commands    map[string]command.Command
-	client      *client.Twitch
-}
-
-type MessageHandler struct {
-	gorm.Model
-	ChannelID               uint
-	Namespace               string
-	Name                    string
-	CommandImplementationID uint
-	IsDisabled              bool
-}
-
-type Permission struct {
-	gorm.Model
-	ChannelID uint
-	RoleID    uint
-	CommandID uint
-	Priority  int
-	Grant     string
-}
-
-type Role struct {
-	gorm.Model
-	ChannelID uint
-	Name      string
-}
 
 func (b *Bot) Start(db *gorm.DB) {
 	b.db = db
@@ -125,6 +67,17 @@ func (b *Bot) handleMessage(e *client.TwitchEvent) {
 	}
 }
 
+func (b *Bot) JoinNewChat(c string) {
+	if _, exists := b.chats[c]; exists {
+		return
+	}
+	//TODO: Setup the default parameters for the room.
+	newChat := &ChatRoom{Name: c, IsEnabled: true, BotID: b.ID}
+	b.db.Create(newChat)
+	b.client.Join(c)
+
+}
+
 func (c *ChatRoom) handleComment(e *client.TwitchEvent) {
 	//Initially this will be for questions so people don't have to keep asking them over and over.
 	// should also let people bump the question from the user
@@ -158,15 +111,4 @@ func (c *ChatRoom) initialize(db *gorm.DB) {
 	c.commands = make(map[string]command.Command)
 	c.commands["!ping"] = command.Ping
 	c.commands["!addCommand"] = command.AddCommand
-}
-
-func (b *Bot) JoinNewChat(c string) {
-	if _, exists := b.chats[c]; exists {
-		return
-	}
-	//TODO: Setup the default parameters for the room.
-	newChat := &ChatRoom{Name: c, IsEnabled: true, BotID: b.ID}
-	b.db.Create(newChat)
-	b.client.Join(c)
-
 }
