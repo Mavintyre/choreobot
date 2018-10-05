@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2018. David Hanson. All Rights Reserved.
+ *
+ */
+
 package straw_poll
 
 // This will implement a straw poll with a timeout or vote threshold.

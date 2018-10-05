@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2018. David Hanson. All Rights Reserved.
+ *
+ */
+
 package command
 
 import "github.com/gempir/go-twitch-irc"
