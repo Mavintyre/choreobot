@@ -6,13 +6,13 @@
 package registry
 
 import (
+	"github.com/djdoeslinux/choreobot/command/counter"
+	"github.com/djdoeslinux/choreobot/command/loyalty_points"
+	"github.com/djdoeslinux/choreobot/command/turing_test"
 	"github.com/djdoeslinux/choreobot/core"
-	"github.com/djdoeslinux/choreobot/counter"
-	"github.com/djdoeslinux/choreobot/loyalty_points"
 	"github.com/djdoeslinux/choreobot/meter"
 	"github.com/djdoeslinux/choreobot/moderator"
 	"github.com/djdoeslinux/choreobot/straw_poll"
-	"github.com/djdoeslinux/choreobot/turing_test"
 	"github.com/djdoeslinux/choreobot/user"
 	"github.com/jinzhu/gorm"
 )

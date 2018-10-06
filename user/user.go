@@ -6,6 +6,7 @@
 package user
 
 import (
+	"github.com/djdoeslinux/choreobot/client"
 	"github.com/jinzhu/gorm"
 	"time"
 )
@@ -31,6 +32,10 @@ type UserChatState struct {
 	LastSeen  time.Time
 	BanCount  int
 	LastBan   int
+}
+
+func GetUserByEvent(e *client.TwitchEvent) *User {
+	panic("implement me")
 }
 
 func GetUserByName(n string) *User {

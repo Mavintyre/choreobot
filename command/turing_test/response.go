@@ -7,8 +7,9 @@ package turing_test
 
 import (
 	"fmt"
+	"github.com/djdoeslinux/choreobot/client"
 	"github.com/djdoeslinux/choreobot/command"
-	"github.com/gempir/go-twitch-irc"
+	"github.com/djdoeslinux/choreobot/user"
 	"github.com/jinzhu/gorm"
 	"math/rand"
 	"strconv"
@@ -24,6 +25,8 @@ import (
 ///// MultiResponse
 // Templated: !law {U} {1} {2} {...} -- Interpolates a response based on a template. Arguments are space separated. An ellipsis indicates "all remaining arguments"
 
+const maxRandomTries int = 5
+
 var Models []interface{}
 
 func init() {
@@ -32,13 +35,13 @@ func init() {
 
 type Turing struct {
 	gorm.Model
-	Name      string
-	ChannelID uint
-	Responses []Response
+	Name           string
+	EventHandlerID uint
+	Responses      []Response
 
 	//Private Members
 	numResponses     int
-	templatesByIndex []*template.Template
+	responsesByIndex []*Response
 	isInitialized    bool
 }
 
@@ -47,71 +50,158 @@ type Response struct {
 	TuringID uint
 	Index    int
 	Template string
+	// Private Members
+	compiled         *template.Template
+	hasTemplateError bool
 }
 
 type Responder interface {
 	command.Command
 	GetResponseByIndex(i int) string
 	GetRandomResponse() string
-	AddResponse(string) int
+	AddResponse(db *gorm.DB, template string) int
 }
 
-func GetTuringByChannelAndName(channelID uint, name string) *Turing {
-	panic("x")
+func GetTuringByEventHandlerID(db *gorm.DB, eventHandlerID uint) (t *Turing) {
+	t = &Turing{EventHandlerID: eventHandlerID}
+	db.Find(t)
+	t.initialize()
+	return
+}
+
+func NewBlankTuring() (t *Turing) {
+	t = &Turing{}
+	return t
+}
+
+func NewTuring(db *gorm.DB, name string, eventHandlerID uint, responses ...string) (*Turing, error) {
+	t := &Turing{Name: name, EventHandlerID: eventHandlerID}
+	t.numResponses = len(responses)
+	db.Create(t).Find(t)
+	for _, templ := range responses {
+		t.AddResponse(db, templ)
+	}
+	db.Save(t)
+	return t, nil
+}
+
+func (t *Turing) AddResponse(db *gorm.DB, templateString string) error {
+	t.numResponses++
+	index := t.numResponses
+	r := Response{TuringID: t.ID, Index: index, Template: templateString}
+	db.Save(&r)
+	return t.initResponse(r)
+}
+
+func (t *Turing) ModifyResponse(db *gorm.DB, responseIndex int, newTemplate string) error {
+	r := t.responsesByIndex[responseIndex]
+	err := r.modify(db, newTemplate)
+	if err != nil {
+		return err
+	}
+	// Need to refresh self from the database to pickup changes in t.Responses
+	db.Find(t)
+	t.initialize()
+	return nil
+}
+
+func (t *Turing) Save(db *gorm.DB) {
+	db.Save(t)
+}
+
+func (r *Response) modify(db *gorm.DB, newTemplate string) error {
+	old := r.Template
+	oldCompile := r.compiled
+	r.Template = newTemplate
+	err := r.compile()
+	if err != nil {
+		r.Template = old
+		r.compiled = oldCompile
+		return err
+	}
+	db.Save(r)
+	return nil
 }
 
 func (t *Turing) initialize() {
 
 	for _, r := range t.Responses {
-		if len(t.templatesByIndex) < r.Index {
-			newSlice := make([]*template.Template, r.Index, r.Index)
-			copy(newSlice, t.templatesByIndex)
-			t.templatesByIndex = newSlice
-		}
-		templ := template.New(fmt.Sprintf("%s:%s", t.Name, strconv.Itoa(r.Index)))
-		parsedTemplate, err := templ.Parse(r.Template)
-		if err != nil {
-			panic("broken template?")
-		}
-		t.templatesByIndex[r.Index] = parsedTemplate
+		t.initResponse(r)
 	}
+	t.isInitialized = true
 }
 
-func (t *Turing) Evaluate(u twitch.User, args command.TokenStream) command.Result {
+func (t *Turing) initResponse(r Response) error {
+	// Verify our slice is big enough for the configured index.
+	if len(t.responsesByIndex) < r.Index {
+		newSlice := make([]*Response, r.Index, r.Index)
+		copy(newSlice, t.responsesByIndex)
+		t.responsesByIndex = newSlice
+	}
+	t.responsesByIndex[r.Index] = &r
+	return r.compile()
+}
+
+func (r Response) compile() (err error) {
+	templateName := strconv.Itoa(int(r.ID))
+	templ := template.New(templateName)
+	r.compiled, err = templ.Parse(r.Template)
+	//Error passed through silently if existing
+	//TODO: Log the error
+	return
+}
+
+func (t *Turing) Evaluate(e *client.TwitchEvent, args command.TokenStream) command.Result {
 	if t.numResponses == 1 {
-		return t.doTemplate(0, u, args)
+		return t.doTemplate(0, e, args)
 	}
 	if args.NumTokens() == 1 {
-		return t.doTemplate(rand.Intn(t.numResponses), u, args)
+		return t.doRandomTemplate(e, args)
 	}
 
 	index, err := strconv.Atoi(args.GetTokenByIndex(1).String())
 	if err == nil {
-		return t.doTemplate(index, u, args)
+		return t.doTemplate(index, e, args)
 	}
 	return command.Error(err)
 }
 
-func (t *Turing) AddResponse(string) int {
-	panic("implement me")
+func (t *Turing) doRandomTemplate(e *client.TwitchEvent, s command.TokenStream) command.Result {
+	startIndex := rand.Intn(t.numResponses)
+	for i := 0; i < maxRandomTries; i++ {
+		index := (startIndex + i) % t.numResponses
+		r, err := t.responsesByIndex[index].doTemplate(e, s)
+		if err != nil {
+			return r
+		}
+	}
+	return command.Error(fmt.Errorf("No good templates found after %s tries. Giving up", maxRandomTries))
 }
 
-func (t *Turing) doTemplate(i int, user twitch.User, stream command.TokenStream) command.Result {
-	tt := t.templatesByIndex[i]
+func (t *Turing) doTemplate(i int, e *client.TwitchEvent, stream command.TokenStream) command.Result {
+	r, _ := t.responsesByIndex[i].doTemplate(e, stream)
+	return r
+}
+
+func (r *Response) doTemplate(e *client.TwitchEvent, s command.TokenStream) (command.Result, error) {
+	if r.hasTemplateError {
+		return nil, fmt.Errorf("Malformed Response Template.")
+	}
 	data := struct {
-		me   string
+		me   *user.User
 		args []string
 	}{}
-	stream.Seek(i)
-	for stream.NotDone() {
-		token, _ := stream.PopToken()
+
+	s.Seek(1)
+	for s.NotDone() {
+		token, _ := s.PopToken()
 		data.args = append(data.args, token.String())
 	}
-	data.me = user.Username
+	data.me = user.GetUserByEvent(e)
 	result := strings.Builder{}
-	err := tt.Execute(&result, data)
+	err := r.compiled.Execute(&result, data)
 	if err != nil {
-		return command.Error(err)
+		return command.Error(err), err
 	}
-	return command.TODO
+	return command.TODO, nil
 }

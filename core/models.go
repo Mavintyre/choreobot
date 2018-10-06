@@ -15,7 +15,7 @@ import (
 var Models []interface{}
 
 func init() {
-	Models = append(Models, &Bot{}, &ChatRoom{}, &MessageHandler{}, &Permission{}, &Role{})
+	Models = append(Models, &Bot{}, &ChatRoom{}, &EventHandler{}, &Permission{}, &Role{})
 }
 
 type Bot struct {
@@ -36,7 +36,7 @@ type ChatRoom struct {
 	IsEnabled       bool
 	Name            string
 	Moderator       *moderator.Moderator
-	MessageHandlers []MessageHandler
+	MessageHandlers []EventHandler
 	Permissions     []Permission
 
 	//Private members down here
@@ -45,13 +45,12 @@ type ChatRoom struct {
 	client      *client.Twitch
 }
 
-type MessageHandler struct {
+type EventHandler struct {
 	gorm.Model
-	ChannelID               uint
-	Namespace               string
-	Name                    string
-	CommandImplementationID uint
-	IsDisabled              bool
+	ChannelID  uint
+	Namespace  string
+	Name       string
+	IsDisabled bool
 }
 
 type Permission struct {
