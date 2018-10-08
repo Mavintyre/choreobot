@@ -6,7 +6,7 @@
 package user
 
 import (
-	"github.com/djdoeslinux/choreobot/client"
+	client "github.com/djdoeslinux/choreobot/client/twitch"
 	"github.com/jinzhu/gorm"
 	"time"
 )

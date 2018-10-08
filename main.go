@@ -7,7 +7,7 @@ package main
 
 import (
 	"github.com/djdoeslinux/choreobot/bot"
-	"github.com/djdoeslinux/choreobot/registry"
+	"github.com/djdoeslinux/choreobot/core"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/sanity-io/litter"
@@ -20,7 +20,7 @@ func main() {
 	db, _ := gorm.Open("sqlite3", "/tmp/choreobot.sqlite")
 	defer db.Close()
 	var b []*bot.Bot
-	registry.AutoMigrate(db)
+	core.AutoMigrate(db)
 
 	//db.Create(&core.Bot{ UserName:   "stupidbot", OAuthToken: "", })
 	db.Set("gorm:auto_preload", true).Find(&b)
