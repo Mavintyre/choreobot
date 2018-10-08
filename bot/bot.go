@@ -3,10 +3,10 @@
  *
  */
 
-package core
+package bot
 
 import (
-	"github.com/djdoeslinux/choreobot/client"
+	client "github.com/djdoeslinux/choreobot/client/twitch"
 	"github.com/jinzhu/gorm"
 	"github.com/sanity-io/litter"
 )
@@ -16,8 +16,9 @@ func (b *Bot) Start(db *gorm.DB) {
 	b.initialize()
 	b.client = client.NewTwitchClient(b.UserName)
 	var chats []string
-	for c, _ := range b.chats {
-		chats = append(chats, c)
+	for n, c := range b.chats {
+		c.initialize(b.db, b.client)
+		chats = append(chats, n)
 	}
 	b.client.Start(b, chats...)
 	eventChan := b.client.GetEventChannel()
@@ -31,6 +32,14 @@ func (b *Bot) Start(db *gorm.DB) {
 
 		}
 	}
+}
+
+func (b *Bot) initialize() {
+	b.chats = make(map[string]*ChatRoom)
+	for _, c := range b.ChatRooms {
+		b.chats[c.Name] = &c
+	}
+
 }
 
 func (b *Bot) Stop() {

@@ -61,9 +61,9 @@ type tt struct {
 }
 
 func (*tt) HasResponse() bool {
-	panic("implement me")
+	return false
 }
 
 func (*tt) GetResponse() string {
-	panic("implement me")
+	return "Ok"
 }

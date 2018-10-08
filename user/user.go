@@ -20,9 +20,13 @@ func init() {
 
 type User struct {
 	gorm.Model
-	Name           string
-	TwitchID       int
-	UserChatStates []UserChatState
+	Name             string
+	ClientNamepace   string
+	ClientIdentifier int
+	IsBot            bool
+}
+
+type UserI interface {
 }
 
 type UserChatState struct {

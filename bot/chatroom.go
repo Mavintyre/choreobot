@@ -3,12 +3,14 @@
  *
  */
 
-package core
+package bot
 
 import (
 	"github.com/djdoeslinux/choreobot/client"
 	"github.com/djdoeslinux/choreobot/command"
+	"github.com/djdoeslinux/choreobot/obs_remote"
 	"github.com/jinzhu/gorm"
+	"strings"
 )
 
 func (c *ChatRoom) handleComment(e *client.TwitchEvent) {
@@ -28,20 +30,19 @@ func (c *ChatRoom) handleCommand(e *client.TwitchEvent) {
 	result := cmd.Evaluate(e, tokenStream)
 
 	if result.HasResponse() {
-		c.client.Say(e.Channel, result.GetResponse())
+		parts := strings.Split(result.GetResponse(), "\n")
+		for _, p := range parts {
+			c.client.Say(e.Channel, p)
+		}
 	}
 }
-func (b *Bot) initialize() {
-	b.chats = make(map[string]*ChatRoom)
-	for _, c := range b.ChatRooms {
-		b.chats[c.Name] = &c
-		c.initialize(b.db)
-	}
-
-}
-
-func (c *ChatRoom) initialize(db *gorm.DB) {
+func (c *ChatRoom) initialize(db *gorm.DB, t *client.Twitch) {
+	c.client = t
 	c.commands = make(map[string]command.Command)
 	c.commands["!ping"] = command.Ping
+	c.commands["!watchMav"] = obs_remote.Mav
+	c.commands["!watchKin"] = obs_remote.Kin
 	c.commands["!addCommand"] = command.AddCommand
+	c.commands["!preview"] = obs_remote.TogglePreview
+	c.commands["!remote"] = command.Remote
 }

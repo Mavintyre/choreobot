@@ -3,7 +3,7 @@
  *
  */
 
-package client
+package twitch
 
 import (
 	"fmt"

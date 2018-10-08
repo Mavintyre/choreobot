@@ -3,7 +3,7 @@
  *
  */
 
-package core
+package bot
 
 import (
 	"github.com/djdoeslinux/choreobot/client"

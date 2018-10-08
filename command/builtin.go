@@ -34,7 +34,7 @@ func (notFound) IsAllowed(u twitch.User) bool {
 }
 
 func (notFound) Evaluate(e *client.TwitchEvent, t TokenStream) Result {
-	panic("implement me")
+	return &Reply{"Command not found"}
 	//Return default not found message
 }
 
@@ -47,6 +47,7 @@ var Restore Command
 var Help Command
 var Mute Command
 var Ping Command
+var Remote Command
 
 func init() {
 	AddCommand = &builtin{"AddCommand", addCommand}
@@ -58,6 +59,7 @@ func init() {
 	//Help = &builtin{"Help", help}
 	//Mute = &builtin{"Mute", mute}
 	Ping = &builtin{"ping", ping}
+	Remote = &builtin{"remote", remote}
 }
 
 type builtin struct {
@@ -79,6 +81,10 @@ func ping(event *client.TwitchEvent, stream TokenStream) Result {
 
 func addCommand(e *client.TwitchEvent, s TokenStream) Result {
 	return &Reply{"no command for you"}
+}
+
+func remote(e *client.TwitchEvent, s TokenStream) Result {
+	return &Reply{"New Feature! Type !preview to toggle the preview feed on or off.\nType !watchMav to make Maverick's game the Primary feed.\nType !watchKin to make Kintyre's game the Primary Feed."}
 }
 
 type Reply struct {
