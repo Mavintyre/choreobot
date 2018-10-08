@@ -6,18 +6,55 @@
 package core
 
 import (
+	"github.com/djdoeslinux/choreobot/bot"
+	"github.com/djdoeslinux/choreobot/user"
 	"github.com/jinzhu/gorm"
 )
 
 var models map[Namespace][]interface{}
 
+type WrapperFactory func(user.UserI) Wrapper
+type IdentityFactory func(user.User) user.UserI
+type ImplementorFactory func(bot.Bot) Implementor
+
+var identityProviders map[Namespace]IdentityFactory
+var wrappers map[Namespace]WrapperFactory
+var implementors map[Namespace]ImplementorFactory
+
 func init() {
 	models = make(map[Namespace][]interface{})
+	identityProviders = make(map[Namespace]IdentityFactory)
+	wrappers = make(map[Namespace]WrapperFactory)
+	implementors = make(map[Namespace]ImplementorFactory)
 }
+
+func RegisterWrapper(name Namespace, factory func(user.UserI) Wrapper){
+
+}
+
+func RegisterIdentifier(name Namespace, factory func(user.User) user.UserI){
+
+}
+
+func RegisterImplementor(name Namespace, factory func(bot bot.Bot) Implementor){
+
+}
+
+
 
 func RegisterModel(name Namespace, modelsToRegister ...interface{}) {
 	models[name] = append(models[name], modelsToRegister...)
 }
+
+func GetUserForNamespace(name Namespace, u user.User) user.UserI{
+	if f, exists := identityProviders[name]; exists {
+		return f(u)
+	}
+	return nil
+}
+
+func Get
+
 
 func AutoMigrate(db *gorm.DB) {
 
@@ -26,26 +63,3 @@ func AutoMigrate(db *gorm.DB) {
 	}
 }
 
-//{
-//import (
-//"github.com/djdoeslinux/choreobot/bot"
-//"github.com/djdoeslinux/choreobot/command/counter"
-//"github.com/djdoeslinux/choreobot/command/loyalty_points"
-//"github.com/djdoeslinux/choreobot/command/turing_test"
-//"github.com/djdoeslinux/choreobot/meter"
-//"github.com/djdoeslinux/choreobot/moderator"
-//"github.com/djdoeslinux/choreobot/straw_poll"
-//"github.com/djdoeslinux/choreobot/user"
-//"github.com/jinzhu/gorm"
-//)
-//	models = append(models, bot.Models...)
-//	models = append(models, counter.Models...)
-//	models = append(models, loyalty_points.Models...)
-//	models = append(models, meter.Models...)
-//	models = append(models, moderator.Models...)
-//	models = append(models, straw_poll.Models...)
-//	models = append(models, turing_test.Models...)
-//	models = append(models, user.Models...)
-//
-//	db.AutoMigrate(models...)
-//}

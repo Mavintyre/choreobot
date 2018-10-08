@@ -6,6 +6,7 @@
 package main
 
 import (
+	_ "github.com/djdoeslinux/choreobot/autoregister"
 	"github.com/djdoeslinux/choreobot/bot"
 	"github.com/djdoeslinux/choreobot/core"
 	"github.com/jinzhu/gorm"
