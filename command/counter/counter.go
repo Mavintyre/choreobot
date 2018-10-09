@@ -22,3 +22,7 @@ type Counter struct {
 	Name      string
 	Count     int
 }
+
+func NewBlankCounter() *Counter{
+	return nil
+}

@@ -54,8 +54,8 @@ func (s *stupidLexer) PopToken() (Token, error) {
 }
 
 func newStupidLexxer(m twitch.Message) TokenStream {
-	trimmed := strings.TrimSpace(m.Text)
 	var tok []Token
+	trimmed := strings.TrimSpace(m.Text)
 	for _, t := range strings.Split(trimmed, " ") {
 		tok = append(tok, Token(&stupidToken{t}))
 	}

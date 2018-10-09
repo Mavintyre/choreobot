@@ -7,6 +7,9 @@ package command
 
 import (
 	"github.com/djdoeslinux/choreobot/client"
+	"github.com/djdoeslinux/choreobot/command/counter"
+	"github.com/djdoeslinux/choreobot/command/scoreboard"
+	"github.com/djdoeslinux/choreobot/command/turing_test"
 	"github.com/gempir/go-twitch-irc"
 )
 
@@ -78,6 +81,31 @@ func ping(event *client.TwitchEvent, stream TokenStream) Result {
 }
 
 func addCommand(e *client.TwitchEvent, s TokenStream) Result {
+	s.Seek(1)
+	name, err := s.PopToken()
+	if err != nil {
+
+		return TODO //Return a usage message
+	}
+	namespace, err := s.PopToken()
+	if err != nil {
+		return TODO	//Return a usage message
+	}
+
+	switch namespace.String() {
+	case "quote", "response":
+		t := turing_test.NewBlankTuring()
+		t.Name = name.String()
+		return TODO //Parse and respond
+	case "counter":
+		counter.NewBlankCounter()
+		return TODO //Parse and respond
+	case "scoreboard":
+		scoreboard.NewScoreboard()
+	default:
+		return TODO //Return a no implementation error
+	}
+
 	return &Reply{"no command for you"}
 }
 
