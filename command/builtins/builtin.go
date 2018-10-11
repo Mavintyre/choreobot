@@ -3,17 +3,18 @@
  *
  */
 
-package command
+package builtins
 
 import (
 	"github.com/djdoeslinux/choreobot/client"
+	"github.com/djdoeslinux/choreobot/command"
 	"github.com/djdoeslinux/choreobot/command/counter"
 	"github.com/djdoeslinux/choreobot/command/scoreboard"
 	"github.com/djdoeslinux/choreobot/command/turing_test"
 	"github.com/gempir/go-twitch-irc"
 )
 
-var NotFound Command
+var NotFound command.Command
 
 //AddCommand - create a command
 //Permit -
@@ -26,7 +27,7 @@ var NotFound Command
 //ping - respond with pong
 
 func init() {
-	NotFound = Command(notFound{})
+	NotFound = command.Command(notFound{})
 }
 
 type notFound struct{}
@@ -36,20 +37,20 @@ func (notFound) IsAllowed(u twitch.User) bool {
 	return true
 }
 
-func (notFound) Evaluate(e *client.TwitchEvent, t TokenStream) Result {
+func (notFound) Evaluate(e *client.TwitchEvent, t command.TokenStream) command.Result {
 	panic("implement me")
 	//Return default not found message
 }
 
-var AddCommand Command
-var Permit Command
-var Grant Command
-var DropCommand Command
-var Snapshot Command
-var Restore Command
-var Help Command
-var Mute Command
-var Ping Command
+var AddCommand command.Command
+var Permit command.Command
+var Grant command.Command
+var DropCommand command.Command
+var Snapshot command.Command
+var Restore command.Command
+var Help command.Command
+var Mute command.Command
+var Ping command.Command
 
 func init() {
 	AddCommand = &builtin{"AddCommand", addCommand}
@@ -65,10 +66,10 @@ func init() {
 
 type builtin struct {
 	cmd string
-	exe func(e *client.TwitchEvent, s TokenStream) Result
+	exe func(e *client.TwitchEvent, s command.TokenStream) command.Result
 }
 
-func (b *builtin) Evaluate(e *client.TwitchEvent, s TokenStream) Result {
+func (b *builtin) Evaluate(e *client.TwitchEvent, s command.TokenStream) command.Result {
 	return b.exe(e, s)
 }
 
@@ -76,11 +77,11 @@ func (b *builtin) IsAllowed(u twitch.User) bool {
 	return true
 }
 
-func ping(event *client.TwitchEvent, stream TokenStream) Result {
+func ping(event *client.TwitchEvent, stream command.TokenStream) command.Result {
 	return &Reply{"PONG!"}
 }
 
-func addCommand(e *client.TwitchEvent, s TokenStream) Result {
+func addCommand(e *client.TwitchEvent, s command.TokenStream) command.Result {
 	s.Seek(1)
 	name, err := s.PopToken()
 	if err != nil {

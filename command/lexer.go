@@ -45,8 +45,8 @@ type properToken struct {
 	value string
 }
 
-func (*properToken) String() string {
-	panic("implement me")
+func (t *properToken) String() string {
+	return t.value
 }
 
 
@@ -58,7 +58,7 @@ type lexedStream struct {
 }
 
 func LexTwitchEvent(t *client.TwitchEvent) TokenStream{
-	_, c := lex(t)
+	_, c := lexByEvent(t)
 	s := &lexedStream{}
 	for tok := range c{
 		s.tokens = append(s.tokens, tok)
@@ -104,6 +104,7 @@ func (l *lexedStream) PopToken() (Token, error) {
 
 func (l *lexedStream) Seek(i int) error {
 	l.pos = i
+	return nil
 }
 
 type lexer struct {
@@ -116,7 +117,14 @@ type lexer struct {
 	event *client.TwitchEvent
 }
 
-func lex(t *client.TwitchEvent) (*lexer, chan Token){
+func lex(s string) (*lexer, chan Token){
+	l := &lexer{input: s}
+	l.emitter = make(chan Token)
+	go l.run()
+	return l, l.emitter
+}
+
+func lexByEvent(t *client.TwitchEvent) (*lexer, chan Token){
 	l := &lexer{event: t, input: t.Message.Text}
 	l.emitter = make(chan Token)
 	go l.run()
@@ -131,10 +139,17 @@ func (l *lexer) run() {
 }
 
 func (l *lexer) emit(t tokenType){
-	l.emitter <- &properToken{
-		tokenType: t,
-		value: l.input[l.start:l.pos],
+	p := &properToken{tokenType: t}
+	if l.start == l.pos {
+		return
 	}
+	switch t{
+	case simpleText:
+		p.value = l.input[l.start:(l.pos - 1)]
+	case quotedText:
+		p.value = l.input[(l.start + 1):(l.pos - 1)]
+	}
+	l.emitter <- p
 	l.start = l.pos
 }
 
@@ -156,9 +171,10 @@ func rootState(l *lexer) lexFn{
 		case escape:
 			l.next()
 		case eof:
-			break
+			l.emit(simpleText)
+			return nil
 		case ' ', '\t':
-			l.start = l.pos
+			l.emit(simpleText)
 		default:
 			if o, exists := closerOf[r]; exists{
 				l.nextCloser = o
