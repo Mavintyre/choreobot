@@ -31,11 +31,10 @@ const escape rune = '\\'
 
 func init(){
 	closerOf = make(map[rune]rune)
-	closerOf['\''] = '\''
 	closerOf['{'] = '}'
 	closerOf['['] = ']'
-	closerOf['"'] = '"'
 	closerOf['<'] = '>'
+	closerOf['('] = ')'
 }
 
 
@@ -114,6 +113,8 @@ type lexer struct {
 	pos int
 	width int
 	nextCloser rune
+	opener rune
+	openerCount int
 	event *client.TwitchEvent
 }
 
@@ -175,9 +176,14 @@ func rootState(l *lexer) lexFn{
 			return nil
 		case ' ', '\t':
 			l.emit(simpleText)
+		case '"', '\'':
+			l.opener = r
+			return findPair
 		default:
 			if o, exists := closerOf[r]; exists{
 				l.nextCloser = o
+				l.opener = r
+				l.openerCount = 1
 				return findCloser
 			}
 		}
@@ -188,18 +194,39 @@ func rootState(l *lexer) lexFn{
 	return nil
 }
 
+func findPair(l *lexer) lexFn{
+	for {
+		r := l.next()
+		switch r{
+		case eof:
+			fmt.Println("Error parsing enclosed string. Did not find ", string(l.nextCloser) , " before end of string.")
+			return nil
+		case escape:
+			l.next()
+		case l.opener:
+			l.emit(quotedText)
+			return rootState
+		}
+	}
+}
+
 func findCloser(l *lexer) lexFn{
 	for {
 		r := l.next()
 		switch r{
 		case eof:
-			fmt.Println("Error parsing enclosed string. Did not find ", l.nextCloser , " before end of string.")
+			fmt.Println("Error parsing enclosed string. Did not find ", string(l.nextCloser) , " before end of string.")
 			return nil
 		case escape:
 			l.next()
+		case l.opener:
+			l.openerCount++
 		case l.nextCloser:
-			l.emit(quotedText)
-			return rootState
+			l.openerCount--
+			if l.openerCount == 0 {
+				l.emit(quotedText)
+				return rootState
+			}
 		}
 	}
 }

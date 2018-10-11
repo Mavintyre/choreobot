@@ -10,27 +10,26 @@ import (
 	"testing"
 )
 
-var normal string = `!addQuote This is a simple text string broken on whitespace`
-var quoted string = `!addTuring "This is a " quoted string`
-var paired string = `!addTuring This is a { @templated interpolation }`
-var embeddedPaired string = `!addTuring This is a ( {{template}} that is embedded ) "With some " quotes`
-
-func Test_Normal(t *testing.T) {
-	_, c := lex(normal)
-	s := sliceify(c)
-	assertEqual(t, s[6].String(), "string", "string is string")
+type test struct {
+	in, out, title string
+	index int
 }
 
-func Test_Quoted(t *testing.T) {
-	_, c := lex(quoted)
-	s := sliceify(c)
-	assertEqual(t, s[1].String(), "This is a ", "quoted string is string")
+var tests []test = []test{
+test{`!addQuote This is a simple text string broken on whitespace`, "string", "Simple string correct", 6},
+test{`!addTuring "This is a " quoted string`, "This is a ", "Quoted string correct", 1},
+test{`!addTuring This is a { @templated interpolation }`, " @templated interpolation ", "Simple paired correct", 4},
+test{`!addTuring This is a ( {{template}} that is embedded ) "With some " quotes`, " {{template}} that is embedded ", "Multiple pairing characters", 4},
+test{`!addTuring {a{{bc}} de {f} g}`, "a{{bc}} de {f} g", "Nested pairings", 1},
 }
 
-func Test_Paired(t *testing.T) {
-	_, c := lex(paired)
-	s := sliceify(c)
-	assertEqual(t, s[4].String(), " @templated interpolation ", "template clean")
+func Test_Cases(t *testing.T) {
+	for i, x := range tests {
+		fmt.Println("Running test: ", i)
+		_, c := lex(x.in)
+		s := sliceify(c)
+		assertEqual(t, s[x.index].String(), x.out, "")
+	}
 }
 
 func sliceify(c chan Token) (s []Token){
@@ -40,7 +39,7 @@ func sliceify(c chan Token) (s []Token){
 	return
 }
 
-func assertEqual(t *testing.T, a interface{}, b interface{}, message string) {
+func assertEqual(t *testing.T, a, b, message string) {
 	if a == b {
 		return
 	}
