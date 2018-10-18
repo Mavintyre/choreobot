@@ -2,41 +2,56 @@
 
 
 [[projects]]
+  digest = "1:9561b94ff394fa85b4c23956d66a3f09be90572922218012a28fa7f445359d12"
   name = "github.com/gempir/go-twitch-irc"
   packages = ["."]
+  pruneopts = "UT"
   revision = "4d6cd828482ee46468feb78a057ad1396ad9d813"
   version = "0.22"
 
 [[projects]]
+  digest = "1:2a21d36a5ab33e6e4ce82b3c7ba45c2330ca6e9af247382475e056b06395b8a9"
   name = "github.com/jinzhu/gorm"
   packages = [
     ".",
-    "dialects/sqlite"
+    "dialects/sqlite",
   ]
+  pruneopts = "UT"
   revision = "6ed508ec6a4ecb3531899a69cbc746ccf65a4166"
   version = "v1.9.1"
 
 [[projects]]
   branch = "master"
+  digest = "1:fd97437fbb6b7dce04132cf06775bd258cce305c44add58eb55ca86c6c325160"
   name = "github.com/jinzhu/inflection"
   packages = ["."]
+  pruneopts = "UT"
   revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
+  digest = "1:3cafc6a5a1b8269605d9df4c6956d43d8011fc57f266ca6b9d04da6c09dee548"
   name = "github.com/mattn/go-sqlite3"
   packages = ["."]
+  pruneopts = "UT"
   revision = "25ecb14adfc7543176f7d85291ec7dba82c6f7e4"
   version = "v1.9.0"
 
 [[projects]]
+  digest = "1:3265b6b251e076aa31b46c3b58cf55670818be301024d29bc5de35f1ca9790c7"
   name = "github.com/sanity-io/litter"
   packages = ["."]
+  pruneopts = "UT"
   revision = "ae543b7ba8fd6af63e4976198f146e1348ae53c1"
   version = "v1.1.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d517bcb954a59699da504d35a0fd385fcac5dbf8db5dfef8c17ce1ea4e09cd9b"
+  input-imports = [
+    "github.com/gempir/go-twitch-irc",
+    "github.com/jinzhu/gorm",
+    "github.com/jinzhu/gorm/dialects/sqlite",
+    "github.com/sanity-io/litter",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
